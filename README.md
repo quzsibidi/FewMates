@@ -1,6 +1,6 @@
 # 🏫 Experimental School Assistant AI
 
-An extensible, modular, and customizable AI Assistant built with **Google Gemini 1.5 Flash API** and **Streamlit**. Designed as an open-source experimental assistant for educational institutions, allowing seamless integration of custom school knowledge bases (`JSON`) and real-time persona/prompt switching.
+An extensible, modular, and customizable AI Assistant built with **Google Gemini 3.6 Flash API** and **Streamlit**. Designed as an open-source experimental assistant for educational institutions, allowing seamless integration of custom school knowledge bases (`JSON`) and real-time persona/prompt switching.
 
 ---
 
@@ -13,6 +13,15 @@ An extensible, modular, and customizable AI Assistant built with **Google Gemini
 - 🔐 **Secure Key Management**: Uses `python-dotenv` to isolate sensitive credentials from public code repositories.
 
 ---
+
+🗺️ Roadmap & Future Enhancements
+Here are the planned features and improvements for upcoming releases:
+
+[ ] Document Support (RAG Integration): Expand beyond JSON to support .pdf, .docx, and .txt files for school rulebooks and course syllabus processing.
+
+[ ] Voice Interaction: Integrate speech-to-text (STT) and text-to-speech (TTS) for natural voice conversations with the assistant.
+
+[ ] Multi-Language Support: Enable dynamic language switching (e.g., Turkish, English, Spanish) within the chat interface.
 
 ## 🛠️ Project Structure
 
@@ -76,14 +85,7 @@ Add or modify system prompts in prompts.json to introduce new bot behaviors:
 Contributions, issues, and feature requests are welcome! Feel free to check the issues page or submit a pull request.
 License  
 This project is licensed under the MIT License - see the LICENSE file for details.
-🗺️ Roadmap & Future Enhancements
-Here are the planned features and improvements for upcoming releases:
 
-[ ] Document Support (RAG Integration): Expand beyond JSON to support .pdf, .docx, and .txt files for school rulebooks and course syllabus processing.
-
-[ ] Voice Interaction: Integrate speech-to-text (STT) and text-to-speech (TTS) for natural voice conversations with the assistant.
-
-[ ] Multi-Language Support: Enable dynamic language switching (e.g., Turkish, English, Spanish) within the chat interface.
 
 [ ] Export Chat Logs: Allow students and teachers to download chat transcripts as PDF or Markdown files.
 
