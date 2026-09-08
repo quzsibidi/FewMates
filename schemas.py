@@ -1,20 +1,17 @@
 from pydantic import BaseModel, Field
-from typing import Dict, List, Optional
-
-class UserSchedulePayload(BaseModel):
-    user_id: str
-    weak_courses: List[str]
-    busy_hours: Dict[str, List[str]]
-    daily_target_hours: float
+from typing import Optional, List
 
 class ChatRequest(BaseModel):
-    session_id: Optional[str] = "default_session"
-    user_data: UserSchedulePayload
-    message: str
-    mode_instruction: Optional[str] = None
-    language: Optional[str] = "tr"
+    session_id: str = Field(..., description="Unique session identifier for the user")
+    message: str = Field(..., description="User prompt or academic query")
+    use_rag: bool = Field(default=False, description="Flag to enable vector database search")
 
 class ChatResponse(BaseModel):
-    user_id: str
     session_id: str
     response: str
+    sources: Optional[List[str]] = Field(default=None, description="Retrieved RAG source files")
+
+class DocumentUploadResponse(BaseModel):
+    filename: str
+    chunks_indexed: int
+    status: str

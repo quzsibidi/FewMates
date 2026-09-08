@@ -1,21 +1,20 @@
-def build_system_instruction(school_info: str, user_data: dict, mode_instruction: str = None, language: str = "tr") -> str:
-    lang_rule = "Yanıtlarını MUTLAKA Türkçe olarak ver." if language == "tr" else "Respond strictly in English."
-    
-    return f"""
-You are an expert AI Academic & Study Assistant for students.
-{lang_rule}
+SYSTEM_PROMPT = """You are the official AI Academic Assistant for the FewMates platform.
+Your task is to provide clear, accurate, structured, and helpful responses to students' questions.
 
-### School & Institution Info:
-{school_info}
+[RULES]
+1. If [CONTEXT / STUDY NOTES] is provided, prioritize this information above all else.
+2. If the context does not contain the answer, rely on your general knowledge but state this explicitly.
+3. Utilize clean Markdown formatting (bullet points, tables, code blocks) for maximum legibility.
+4. Explain complex academic topics by starting with a high-level summary followed by technical details.
+"""
 
-### Student Profile:
-- User ID: {user_data.get('user_id')}
-- Weak Courses/Subjects: {', '.join(user_data.get('weak_courses', []))}
-- Daily Study Target: {user_data.get('daily_target_hours', 2)} hours
-- Busy Hours: {user_data.get('busy_hours', {})}
+def build_rag_prompt(user_query: str, retrieved_context: str) -> str:
+    if not retrieved_context:
+        return user_query
+        
+    return f"""[CONTEXT / STUDY NOTES]
+{retrieved_context}
 
-### Instructions:
-1. Help the student organize study schedules, solve academic problems, and track exams.
-2. Be structured, clear, and encouraging. Use Markdown tables, lists, or code blocks where appropriate.
-3. {mode_instruction if mode_instruction else 'Provide optimal academic guidance.'}
+[USER QUERY]
+{user_query}
 """
