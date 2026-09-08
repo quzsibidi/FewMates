@@ -1,17 +1,17 @@
 from pydantic import BaseModel
-from typing import List
+from typing import List, Dict, Optional
 
-class ScheduleSlot(BaseModel):
-    day: str
-    busy_slots: List[str]
-    subjects_today: List[str]
-
-class UserProfile(BaseModel):
-    weak_subjects: List[str]
-    daily_study_target_hours: int = 3
-    preferred_study_time: str = "evening"
-
-class StudyPlanRequest(BaseModel):
+class UserSchedulePayload(BaseModel):
     user_id: str
-    weekly_schedule: List[ScheduleSlot]
-    user_profile: UserProfile
+    zayif_dersler: List[str]
+    dolu_saatler: Dict[str, List[str]]  # Örn: {"Pazartesi": ["08:30-15:30"]}
+    gunluk_hedef_saat: int = 3
+
+class ChatRequest(BaseModel):
+    user_data: UserSchedulePayload
+    message: str
+    mode_instruction: Optional[str] = None
+
+class ChatResponse(BaseModel):
+    user_id: str
+    response: str
