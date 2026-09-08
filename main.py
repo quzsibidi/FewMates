@@ -33,14 +33,15 @@ app.add_middleware(
 # Session store for managing chat history in memory
 SESSION_STORE: dict[str, list[types.Content]] = {}
 
-def load_school_data(filepath: str = "okul_data.json") -> str:
+def load_json_file(filepath: str, fallback_json: str) -> str:
     try:
         with open(filepath, "r", encoding="utf-8") as f:
             return json.dumps(json.load(f), ensure_ascii=False, indent=2)
     except FileNotFoundError:
-        return '{"info": "School data not loaded."}'
+        return fallback_json
 
-SCHOOL_INFO = load_school_data()
+SCHOOL_INFO = load_json_file("okul_data.json", '{"info": "School data not loaded."}')
+DEFAULT_USER_DATA = load_json_file("user_data.json", '{"info": "User data not loaded."}')
 
 @app.get("/")
 async def get_index():
@@ -62,13 +63,11 @@ async def chat_endpoint(request: ChatRequest):
             system_instruction=system_instruction
         )
         
-        # Retrieve or initialize session history
         if session_id not in SESSION_STORE:
             SESSION_STORE[session_id] = []
             
         history = SESSION_STORE[session_id]
         
-        # Append incoming user message to history
         history.append(
             types.Content(
                 role="user",
@@ -82,7 +81,6 @@ async def chat_endpoint(request: ChatRequest):
             config=config
         )
         
-        # Append model response to history
         history.append(
             types.Content(
                 role="model",
@@ -97,6 +95,13 @@ async def chat_endpoint(request: ChatRequest):
         )
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"API Error: {str(e)}")
+
+@app.delete("/api/chat/clear/{session_id}")
+async def clear_chat_history(session_id: str):
+    if session_id in SESSION_STORE:
+        del SESSION_STORE[session_id]
+        return {"status": "success", "message": f"Session {session_id} cleared."}
+    return {"status": "not_found", "message": f"Session {session_id} does not exist."}
 
 if __name__ == "__main__":
     import uvicorn

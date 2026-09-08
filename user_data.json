@@ -1,0 +1,8 @@
+{
+  "user_id": "usr_101",
+  "weak_courses": ["Physics", "Mathematics"],
+  "busy_hours": {
+    "Monday": ["08:30-15:30", "18:00-19:00"]
+  },
+  "daily_target_hours": 2
+}
