@@ -1,6 +1,6 @@
 import os
 import json
-from typing import Optional
+import aiofiles
 from dotenv import load_dotenv
 from fastapi import FastAPI, HTTPException
 from fastapi.responses import FileResponse
@@ -10,6 +10,7 @@ from google.genai import types
 
 from schemas import ChatRequest, ChatResponse
 from prompts import build_system_instruction
+from database import init_db, save_message, get_session_history, delete_session
 
 load_dotenv()
 
@@ -21,7 +22,6 @@ client = genai.Client(api_key=API_KEY)
 
 app = FastAPI(title="AI School & Study Assistant API")
 
-# CORS Middleware Configurations
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
@@ -30,18 +30,16 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# Session store for managing chat history in memory
-SESSION_STORE: dict[str, list[types.Content]] = {}
+# Veritabanını başlat
+init_db()
 
-def load_json_file(filepath: str, fallback_json: str) -> str:
+async def load_json_file_async(filepath: str, fallback_json: str) -> str:
     try:
-        with open(filepath, "r", encoding="utf-8") as f:
-            return json.dumps(json.load(f), ensure_ascii=False, indent=2)
+        async with aiofiles.open(filepath, mode="r", encoding="utf-8") as f:
+            content = await f.read()
+            return json.dumps(json.loads(content), ensure_ascii=False, indent=2)
     except FileNotFoundError:
         return fallback_json
-
-SCHOOL_INFO = load_json_file("okul_data.json", '{"info": "School data not loaded."}')
-DEFAULT_USER_DATA = load_json_file("user_data.json", '{"info": "User data not loaded."}')
 
 @app.get("/")
 async def get_index():
@@ -50,11 +48,12 @@ async def get_index():
 @app.post("/api/chat", response_model=ChatResponse)
 async def chat_endpoint(request: ChatRequest):
     try:
+        school_info = await load_json_file_async("okul_data.json", '{"info": "School data not loaded."}')
         user_dict = request.user_data.model_dump()
         session_id = request.session_id or "default_session"
         
         system_instruction = build_system_instruction(
-            school_info=SCHOOL_INFO,
+            school_info=school_info,
             user_data=user_dict,
             mode_instruction=request.mode_instruction
         )
@@ -63,17 +62,9 @@ async def chat_endpoint(request: ChatRequest):
             system_instruction=system_instruction
         )
         
-        if session_id not in SESSION_STORE:
-            SESSION_STORE[session_id] = []
-            
-        history = SESSION_STORE[session_id]
-        
-        history.append(
-            types.Content(
-                role="user",
-                parts=[types.Part.from_text(text=request.message)]
-            )
-        )
+        # Kullanıcı mesajını kaydet ve geçmişi veritabanından çek
+        save_message(session_id, "user", request.message)
+        history = get_session_history(session_id)
         
         response = client.models.generate_content(
             model="gemini-3.6-flash",
@@ -81,12 +72,8 @@ async def chat_endpoint(request: ChatRequest):
             config=config
         )
         
-        history.append(
-            types.Content(
-                role="model",
-                parts=[types.Part.from_text(text=response.text)]
-            )
-        )
+        # Model yanıtını veritabanına kaydet
+        save_message(session_id, "model", response.text)
         
         return ChatResponse(
             user_id=request.user_data.user_id,
@@ -98,9 +85,9 @@ async def chat_endpoint(request: ChatRequest):
 
 @app.delete("/api/chat/clear/{session_id}")
 async def clear_chat_history(session_id: str):
-    if session_id in SESSION_STORE:
-        del SESSION_STORE[session_id]
-        return {"status": "success", "message": f"Session {session_id} cleared."}
+    success = delete_session(session_id)
+    if success:
+        return {"status": "success", "message": f"Session {session_id} cleared from database."}
     return {"status": "not_found", "message": f"Session {session_id} does not exist."}
 
 if __name__ == "__main__":
