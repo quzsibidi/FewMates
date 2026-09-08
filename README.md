@@ -76,3 +76,17 @@ Add or modify system prompts in prompts.json to introduce new bot behaviors:
 Contributions, issues, and feature requests are welcome! Feel free to check the issues page or submit a pull request.
 License  
 This project is licensed under the MIT License - see the LICENSE file for details.
+🗺️ Roadmap & Future Enhancements
+Here are the planned features and improvements for upcoming releases:
+
+[ ] Document Support (RAG Integration): Expand beyond JSON to support .pdf, .docx, and .txt files for school rulebooks and course syllabus processing.
+
+[ ] Voice Interaction: Integrate speech-to-text (STT) and text-to-speech (TTS) for natural voice conversations with the assistant.
+
+[ ] Multi-Language Support: Enable dynamic language switching (e.g., Turkish, English, Spanish) within the chat interface.
+
+[ ] Export Chat Logs: Allow students and teachers to download chat transcripts as PDF or Markdown files.
+
+[ ] Advanced Guardrails: Strengthen safety boundaries to prevent off-topic or policy-violating queries.
+
+[ ] UI/UX Polish: Custom CSS styling with light/dark theme toggles matching school branding.
