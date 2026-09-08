@@ -11,56 +11,71 @@ if not API_KEY:
 
 genai.configure(api_key=API_KEY)
 
-def load_custom_school_data(filepath: str = "okul_data.json") -> str:
-    """Herhangi bir okulun JSON verisini yükler."""
+def load_school_data(filepath: str = "okul_data.json") -> str:
+    """Okulun statik genel verisini yükler."""
     try:
         with open(filepath, "r", encoding="utf-8") as f:
-            data = json.load(f)
-            return json.dumps(data, ensure_ascii=False, indent=2)
+            return json.dumps(json.load(f), ensure_ascii=False, indent=2)
     except FileNotFoundError:
-        return "{'bilgi': 'Özel okul verisi yüklenmedi, genel moddasın.'}"
+        return "{'bilgi': 'Genel okul verisi yüklenmedi.'}"
 
-def create_experimental_bot(data_path: str = "okul_data.json", mode_instruction: str = None):
+# Okul verisi sabit olduğu için bir kere belleğe alıyoruz
+SCHOOL_INFO = load_school_data()
+
+def create_user_bot(user_schedule: dict, mode_instruction: str = None):
     """
-    Deneysel Okul Botu Fabrikası.
-    Hem okul verisini hem de test edilecek modu dinamik alır.
+    Her istek atan kullanıcı için dinamik olarak model nesnesi üretir.
+    user_schedule: Frontend veya DB'den gelen kullanıcıya özel veri.
     """
-    school_info = load_custom_school_data(data_path)
+    user_info_str = json.dumps(user_schedule, ensure_ascii=False, indent=2) if user_schedule else "Kullanıcı ders programı girmedi."
     
     base_instruction = f"""
-    Sen deneysel bir Okul Asistanı botusun.
-    Görevin: Sana sağlanan okul veritabanına göre soruları yanıtlamak.
-    Veritabanında olmayan bilgiler için uydurma yapma, 'Bu bilgi veritabanımda yok' de.
-    
-    [YÜKLENEN OKUL VERİTABANI]:
-    {school_info}
+    Sen gelişmiş bir Okul ve Ders Danışmanı botusun.
+    Görevin:
+    1. Okul genel sorularını [OKUL VERİTABANI] içinden yanıtlamak.
+    2. Çalışma önerilerini [KULLANICI DERS PROGRAMI] verisine göre Kişiye Özel sunmak.
+
+    [OKUL VERİTABANI]:
+    {SCHOOL_INFO}
+
+    [AKTİF KULLANICININ DERS PROGRAMI VE BİLGİLERİ]:
+    {user_info_str}
     """
     
     if mode_instruction:
-        base_instruction += f"\n\n[DENEYSEL MOD/KİŞİLİK TALİMATI]: {mode_instruction}"
+        base_instruction += f"\n\n[ÖZEL TALİMAT]: {mode_instruction}"
 
     return genai.GenerativeModel(
         model_name="gemini-1.5-flash",
         system_instruction=base_instruction
     )
 
-def start_chat_session(model):
-    return model.start_chat(history=[])
-
-def send_message(chat_session, message: str) -> str:
-    try:
-        response = chat_session.send_message(message)
-        return response.text
-    except Exception as e:
-        return f"[API Hatası]: {str(e)}"
-
+# --- CANLI KULLANIM SİMÜLASYONU ---
 if __name__ == "__main__":
-    # Örnek Deney: "Disiplinli Nöbetçi Öğretmen Modu"
-    TEST_MODE = "Sen sert ama adil bir nöbetçi öğretmensin. Soruları kısa ve ciddi yanıtla."
-    
-    bot = create_experimental_bot(mode_instruction=TEST_MODE)
-    session = start_chat_session(bot)
-    
-    print("--- Deneysel Bot Testi ---")
-    print("Soru: Derste telefon kullanabilir miyim?")
-    print("Cevap:", send_message(session, "Derste telefon kullanabilir miyim?"))
+    # Örnek Kullanıcı 1 (Frontend'den/DB'den gelen veri)
+    user_1_data = {
+        "user_id": "usr_101",
+        "zayif_dersler": ["Fizik"],
+        "dolu_saatler": {"Pazartesi": ["08:30-15:30", "18:00-19:30"]},
+        "gunluk_hedef_saat": 2
+    }
+
+    # Örnek Kullanıcı 2
+    user_2_data = {
+        "user_id": "usr_102",
+        "zayif_dersler": ["Matematik", "Kimya"],
+        "dolu_saatler": {"Pazartesi": ["08:30-16:00"]},
+        "gunluk_hedef_saat": 4
+    }
+
+    # Kullanıcı 1 İstek Atıyor
+    bot_user_1 = create_user_bot(user_schedule=user_1_data)
+    session_1 = bot_user_1.start_chat(history=[])
+    res_1 = session_1.send_message("Bugün boş vaktimde ne çalışayım?")
+    print(f"--- User 1 Yanıtı ---\n{res_1.text}\n")
+
+    # Kullanıcı 2 İstek Atıyor
+    bot_user_2 = create_user_bot(user_schedule=user_2_data)
+    session_2 = bot_user_2.start_chat(history=[])
+    res_2 = session_2.send_message("Bugün boş vaktimde ne çalışayım?")
+    print(f"--- User 2 Yanıtı ---\n{res_2.text}")
