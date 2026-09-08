@@ -68,7 +68,7 @@ If a question cannot be answered using the context, state: 'This information is 
 
 if "chat" not in st.session_state or st.session_state.chat is None:
     model = genai.GenerativeModel(
-        model_name="gemini-1.5-flash",
+        model_name="gemini-3.6-flash",
         system_instruction=full_instruction
     )
     st.session_state.chat = model.start_chat(history=[])
@@ -87,16 +87,19 @@ if user_input := st.chat_input("Ask something about the school..."):
         st.markdown(user_input)
 
     with st.chat_message("assistant"):
+        message_placeholder = st.empty()
+        full_response = ""
         try:
             response = st.session_state.chat.send_message(user_input, stream=True)
             
-            def stream_generator():
-                for chunk in response:
-                    yield chunk.text
+            for chunk in response:
+                if chunk.text:
+                    full_response += chunk.text
+                    message_placeholder.markdown(full_response + "▌")
             
-            bot_reply = st.write_stream(stream_generator())
+            message_placeholder.markdown(full_response)
         except Exception as e:
-            bot_reply = f"[Error]: {str(e)}"
-            st.markdown(bot_reply)
+            full_response = f"[Error]: {str(e)}"
+            message_placeholder.markdown(full_response)
         
-        st.session_state.messages.append({"role": "assistant", "content": bot_reply})
+        st.session_state.messages.append({"role": "assistant", "content": full_response})
