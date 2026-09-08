@@ -1,5 +1,4 @@
 import sqlite3
-import json
 from typing import List
 from google.genai import types
 
@@ -14,6 +13,15 @@ def init_db():
                 session_id TEXT NOT NULL,
                 role TEXT NOT NULL,
                 content TEXT NOT NULL
+            )
+        """)
+        cursor.execute("""
+            CREATE TABLE IF NOT EXISTS exams (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                session_id TEXT NOT NULL,
+                title TEXT NOT NULL,
+                course TEXT NOT NULL,
+                date TEXT NOT NULL
             )
         """)
         conn.commit()
@@ -50,5 +58,21 @@ def delete_session(session_id: str) -> bool:
     with sqlite3.connect(DB_PATH) as conn:
         cursor = conn.cursor()
         cursor.execute("DELETE FROM history WHERE session_id = ?", (session_id,))
+        cursor.execute("DELETE FROM exams WHERE session_id = ?", (session_id,))
         conn.commit()
         return cursor.rowcount > 0
+
+def add_exam(session_id: str, title: str, course: str, date: str):
+    with sqlite3.connect(DB_PATH) as conn:
+        cursor = conn.cursor()
+        cursor.execute(
+            "INSERT INTO exams (session_id, title, course, date) VALUES (?, ?, ?, ?)",
+            (session_id, title, course, date)
+        )
+        conn.commit()
+
+def get_exams(session_id: str):
+    with sqlite3.connect(DB_PATH) as conn:
+        cursor = conn.cursor()
+        cursor.execute("SELECT title, course, date FROM exams WHERE session_id = ?", (session_id,))
+        return cursor.fetchall()

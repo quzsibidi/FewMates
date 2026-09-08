@@ -5,12 +5,13 @@ from dotenv import load_dotenv
 from fastapi import FastAPI, HTTPException
 from fastapi.responses import FileResponse
 from fastapi.middleware.cors import CORSMiddleware
+from pydantic import BaseModel
 from google import genai
 from google.genai import types
 
 from schemas import ChatRequest, ChatResponse
 from prompts import build_system_instruction
-from database import init_db, save_message, get_session_history, delete_session
+from database import init_db, save_message, get_session_history, delete_session, add_exam, get_exams
 
 load_dotenv()
 
@@ -30,7 +31,6 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# Veritabanını başlat
 init_db()
 
 async def load_json_file_async(filepath: str, fallback_json: str) -> str:
@@ -62,7 +62,6 @@ async def chat_endpoint(request: ChatRequest):
             system_instruction=system_instruction
         )
         
-        # Kullanıcı mesajını kaydet ve geçmişi veritabanından çek
         save_message(session_id, "user", request.message)
         history = get_session_history(session_id)
         
@@ -72,7 +71,6 @@ async def chat_endpoint(request: ChatRequest):
             config=config
         )
         
-        # Model yanıtını veritabanına kaydet
         save_message(session_id, "model", response.text)
         
         return ChatResponse(
@@ -89,6 +87,22 @@ async def clear_chat_history(session_id: str):
     if success:
         return {"status": "success", "message": f"Session {session_id} cleared from database."}
     return {"status": "not_found", "message": f"Session {session_id} does not exist."}
+
+class ExamRequest(BaseModel):
+    session_id: str
+    title: str
+    course: str
+    date: str
+
+@app.post("/api/exams")
+async def create_exam(exam: ExamRequest):
+    add_exam(exam.session_id, exam.title, exam.course, exam.date)
+    return {"status": "success", "message": f"Exam '{exam.title}' added."}
+
+@app.get("/api/exams/{session_id}")
+async def list_exams(session_id: str):
+    exams = get_exams(session_id)
+    return {"session_id": session_id, "exams": [{"title": r[0], "course": r[1], "date": r[2]} for r in exams]}
 
 if __name__ == "__main__":
     import uvicorn
