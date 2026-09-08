@@ -3,6 +3,7 @@ import json
 from typing import Optional
 from dotenv import load_dotenv
 from fastapi import FastAPI, HTTPException
+from fastapi.responses import FileResponse
 from google import genai
 from google.genai import types
 
@@ -15,7 +16,6 @@ API_KEY = os.getenv("GEMINI_API_KEY")
 if not API_KEY:
     raise ValueError("GEMINI_API_KEY bulunamadı! .env dosyasını kontrol edin.")
 
-# SDK Client yapılandırması
 client = genai.Client(api_key=API_KEY)
 
 app = FastAPI(title="Okul & Ders Danışmanı API")
@@ -28,6 +28,11 @@ def load_school_data(filepath: str = "okul_data.json") -> str:
         return "{'bilgi': 'Genel okul verisi yüklenmedi.'}"
 
 SCHOOL_INFO = load_school_data()
+
+# Web Arayüzü Ana Sayfası
+@app.get("/")
+async def get_index():
+    return FileResponse("index.html")
 
 @app.post("/api/chat", response_model=ChatResponse)
 async def chat_endpoint(request: ChatRequest):
