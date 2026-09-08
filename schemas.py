@@ -3,20 +3,16 @@ from typing import Dict, List, Optional
 
 class UserSchedulePayload(BaseModel):
     user_id: str
-    weak_courses: List[str] = Field(default_factory=list)
-    busy_hours: Dict[str, List[str]] = Field(default_factory=dict)
-    daily_target_hours: int = 2
-
-class ChatMessage(BaseModel):
-    role: str  # "user" veya "model"
-    content: str
+    weak_courses: List[str]
+    busy_hours: Dict[str, List[str]]
+    daily_target_hours: float
 
 class ChatRequest(BaseModel):
     session_id: Optional[str] = "default_session"
     user_data: UserSchedulePayload
     message: str
-    mode_instruction: Optional[str] = "Respond in English. Be direct, clear, and supportive."
-    history: Optional[List[ChatMessage]] = Field(default_factory=list)
+    mode_instruction: Optional[str] = None
+    language: Optional[str] = "tr"
 
 class ChatResponse(BaseModel):
     user_id: str

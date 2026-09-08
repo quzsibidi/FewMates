@@ -52,10 +52,17 @@ async def chat_endpoint(request: ChatRequest):
         user_dict = request.user_data.model_dump()
         session_id = request.session_id or "default_session"
         
+        # Dil tespiti: Türkçe karakter veya anahtar kelime kontrolü
+        detected_lang = request.language
+        tr_keywords = ['ç', 'ğ', 'ı', 'ö', 'ş', 'ü', 'nasıl', 'nedir', 'çalış', 'merhaba', 'selam', 'hangi']
+        if any(kw in request.message.lower() for kw in tr_keywords):
+            detected_lang = "tr"
+
         system_instruction = build_system_instruction(
             school_info=school_info,
             user_data=user_dict,
-            mode_instruction=request.mode_instruction
+            mode_instruction=request.mode_instruction,
+            language=detected_lang
         )
         
         config = types.GenerateContentConfig(
