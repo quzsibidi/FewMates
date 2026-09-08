@@ -6,34 +6,43 @@
     <title>AI School & Study Assistant</title>
     <style>
         * { box-sizing: border-box; margin: 0; padding: 0; }
-        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background: #121212; color: #e0e0e0; display: flex; justify-content: center; align-items: center; min-height: 100vh; padding: 20px; }
-        .chat-container { width: 100%; max-width: 650px; background: #1e1e1e; border-radius: 10px; border: 1px solid #333; display: flex; flex-direction: column; height: 85vh; box-shadow: 0 4px 20px rgba(0,0,0,0.5); }
-        .chat-header { padding: 20px; border-bottom: 1px solid #333; background: #252526; border-radius: 10px 10px 0 0; }
-        .chat-header h2 { font-size: 1.2rem; color: #ffffff; }
-        .chat-box { flex: 1; overflow-y: auto; padding: 20px; display: flex; flex-direction: column; gap: 12px; }
-        .msg { padding: 10px 14px; border-radius: 8px; max-width: 80%; line-height: 1.5; font-size: 0.95rem; white-space: pre-wrap; word-wrap: break-word; }
-        .user { background: #0e639c; color: #ffffff; align-self: flex-end; }
-        .bot { background: #2d2d2d; color: #d4d4d4; align-self: flex-start; border: 1px solid #3c3c3c; }
-        .input-box { display: flex; gap: 10px; padding: 15px; border-top: 1px solid #333; background: #252526; border-radius: 0 0 10px 10px; }
-        input { flex: 1; padding: 12px; border-radius: 6px; border: 1px solid #3c3c3c; background: #1e1e1e; color: #fff; font-size: 0.95rem; outline: none; }
-        input:focus { border-color: #0e639c; }
-        button { padding: 12px 24px; border: none; background: #0e639c; color: white; font-weight: bold; border-radius: 6px; cursor: pointer; transition: background 0.2s; }
-        button:hover { background: #1177bb; }
+        body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif; background: #0f1117; color: #e0e0e0; display: flex; justify-content: center; align-items: center; min-height: 100vh; padding: 20px; }
+        .chat-container { width: 100%; max-width: 750px; background: #161922; border-radius: 12px; border: 1px solid #2a2e3d; display: flex; flex-direction: column; height: 85vh; box-shadow: 0 8px 32px rgba(0,0,0,0.4); }
+        .chat-header { padding: 16px 20px; border-bottom: 1px solid #2a2e3d; background: #1f2330; border-radius: 12px 12px 0 0; display: flex; justify-content: space-between; align-items: center; }
+        .chat-header h2 { font-size: 1.1rem; font-weight: 600; color: #ffffff; display: flex; align-items: center; gap: 8px; }
+        .status-dot { width: 8px; height: 8px; background: #10b981; border-radius: 50%; display: inline-block; }
+        .clear-btn { background: #2a2e3d; color: #9ca3af; border: 1px solid #374151; padding: 6px 12px; border-radius: 6px; font-size: 0.85rem; cursor: pointer; transition: all 0.2s; }
+        .clear-btn:hover { background: #ef4444; color: #fff; border-color: #ef4444; }
+        .chat-box { flex: 1; overflow-y: auto; padding: 20px; display: flex; flex-direction: column; gap: 16px; scroll-behavior: smooth; }
+        .msg { padding: 12px 16px; border-radius: 8px; max-width: 85%; line-height: 1.6; font-size: 0.95rem; word-wrap: break-word; }
+        .user { background: #2563eb; color: #ffffff; align-self: flex-end; border-bottom-right-radius: 2px; }
+        .bot { background: #1f2330; color: #d1d5db; align-self: flex-start; border: 1px solid #2a2e3d; border-bottom-left-radius: 2px; }
+        .input-box { display: flex; gap: 10px; padding: 16px; border-top: 1px solid #2a2e3d; background: #1f2330; border-radius: 0 0 12px 12px; }
+        input { flex: 1; padding: 12px 16px; border-radius: 8px; border: 1px solid #2a2e3d; background: #0f1117; color: #fff; font-size: 0.95rem; outline: none; transition: border-color 0.2s; }
+        input:focus { border-color: #2563eb; }
+        button#sendBtn { padding: 12px 24px; border: none; background: #2563eb; color: white; font-weight: 600; border-radius: 8px; cursor: pointer; transition: background 0.2s; display: flex; align-items: center; justify-content: center; }
+        button#sendBtn:hover { background: #1d4ed8; }
+        button#sendBtn:disabled { background: #374151; cursor: not-allowed; opacity: 0.7; }
+        .system-msg { text-align: center; font-size: 0.8rem; color: #6b7280; margin: 4px 0; }
     </style>
 </head>
 <body>
 <div class="chat-container">
     <div class="chat-header">
-        <h2>AI School & Study Assistant</h2>
+        <h2><span class="status-dot"></span> AI School & Study Assistant</h2>
+        <button class="clear-btn" onclick="clearSession()">Clear Chat</button>
     </div>
-    <div class="chat-box" id="chatBox"></div>
+    <div class="chat-box" id="chatBox">
+        <div class="system-msg">Session initialized. How can I help with your study plan today?</div>
+    </div>
     <div class="input-box">
-        <input type="text" id="userInput" placeholder="Type your message here..." onkeydown="if(event.key==='Enter') sendMessage()">
-        <button onclick="sendMessage()">Send</button>
+        <input type="text" id="userInput" placeholder="Type your message..." onkeydown="if(event.key==='Enter') sendMessage()">
+        <button id="sendBtn" onclick="sendMessage()">Send</button>
     </div>
 </div>
 
 <script>
+    const sessionId = "default_session";
     const userData = {
         user_id: "usr_101",
         weak_courses: ["Physics", "Mathematics"],
@@ -43,26 +52,48 @@
 
     async function sendMessage() {
         const input = document.getElementById("userInput");
+        const sendBtn = document.getElementById("sendBtn");
         const message = input.value.trim();
         if (!message) return;
 
         appendMessage(message, "user");
         input.value = "";
+        
+        input.disabled = true;
+        sendBtn.disabled = true;
+        sendBtn.innerText = "Thinking...";
 
         try {
             const response = await fetch("/api/chat", {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({
+                    session_id: sessionId,
                     user_data: userData,
                     message: message,
-                    mode_instruction: "Respond in English. Be clear, direct, and supportive."
+                    mode_instruction: "Respond in English. Be clear, direct, structured, and encouraging."
                 })
             });
             const data = await response.json();
             appendMessage(data.response, "bot");
         } catch (error) {
-            appendMessage("An error occurred while connecting to the server.", "bot");
+            appendMessage("Error: Unable to connect to the assistant server.", "bot");
+        } finally {
+            input.disabled = false;
+            sendBtn.disabled = false;
+            sendBtn.innerText = "Send";
+            input.focus();
+        }
+    }
+
+    async function clearSession() {
+        try {
+            const res = await fetch(`/api/chat/clear/${sessionId}`, { method: "DELETE" });
+            const data = await res.json();
+            const chatBox = document.getElementById("chatBox");
+            chatBox.innerHTML = `<div class="system-msg">Session cleared successfully. Start a new conversation.</div>`;
+        } catch (err) {
+            alert("Failed to clear session.");
         }
     }
 
@@ -70,7 +101,13 @@
         const chatBox = document.getElementById("chatBox");
         const msgDiv = document.createElement("div");
         msgDiv.className = `msg ${sender}`;
-        msgDiv.innerText = text;
+        
+        // Basit metin biçimlendirmesi (Satır sonları ve kalın metinler)
+        let formattedText = text
+            .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
+            .replace(/\n/g, '<br>');
+
+        msgDiv.innerHTML = formattedText;
         chatBox.appendChild(msgDiv);
         chatBox.scrollTop = chatBox.scrollHeight;
     }
