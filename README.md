@@ -1,25 +1,94 @@
-# AI School & Study Assistant API
+FewMates 🚀
+AI-Powered Academic Assistant API with RAG & SSE Streaming
 
-An intelligent, multi-tenant AI Assistant API designed to generate personalized daily study plans and academic guidance for high school students. Powered by FastAPI and the Google Gemini 3.6 Flash model.
+FewMates is an asynchronous academic assistant backend built with FastAPI and Google Gemini 2.5 Flash. It provides real-time streaming responses via Server-Sent Events (SSE) and enables contextual document querying (RAG) over uploaded course materials using ChromaDB.
 
-## Features
-- **Personalized Scheduling:** Dynamically builds study plans based on weak subjects, daily targets, and personal busy hours.
-- **Session-Based Chat History:** Maintains contextual dialogue across user interactions.
-- **Modern SDK:** Built using the official `google-genai` SDK and `gemini-3.6-flash`.
-- **CORS Supported:** Ready for external web or mobile client integration.
-- **Interactive UI:** Built-in web client (`/`) and auto-generated OpenAPI docs (`/docs`).
+🏛️ System Architecture
+                                  +-----------------------+
+                                  |   Frontend / Client   |
+                                  +-----------+-----------+
+                                              |
+                                   HTTP / SSE | Requests
+                                              v
++-----------------------------------------------------------------------------------+
+| FewMates FastAPI Backend                                                          |
+|                                                                                   |
+|  +--------------------+       +-----------------------+       +----------------+  |
+|  | /upload-pdf        | ----> | PyPDF & Text Splitter | ----> | ChromaDB       |  |
+|  | (Document Ingest)  |       +-----------------------+       | (Vector Store) |  |
+|  +--------------------+                                       +-------+--------+  |
+|                                                                       |           |
+|                                                               Context | Retrieval |
+|                                                                       v           |
+|  +--------------------+       +-----------------------+       +---------------+   |
+|  | /chat/stream       | ----> | RAG Prompt Builder    | ----> | Google GenAI  |   |
+|  | (SSE Endpoint)     |       +-----------------------+       | (Gemini 2.5)  |   |
+|  +---------+----------+                                       +-------+-------+   |
++------------|----------------------------------------------------------|-----------+
+             |                                                          |
+             +<----------------- EventStream Chunks <-------------------+
+✨ Core Features
+Real-time SSE Streaming: Asynchronous text streaming delivering sub-second response latency via Server-Sent Events.
 
-## Tech Stack
-- Python 3.10+
-- FastAPI & Uvicorn
-- Pydantic v2
-- Google GenAI SDK (`google-genai`)
+Retrieval-Augmented Generation (RAG): Context-aware question answering backed by local ChromaDB vector index and PyPDF ingestion.
 
-## Quick Start
+Dynamic System Prompting: Built-in academic instruction rules guaranteeing clean Markdown, structured explanations, and verified sources.
 
-### 1. Installation
-Clone the repository and install the dependencies:
-```bash
-git clone <your-repository-url>
-cd sa-ma-ai-i-leri
+Asynchronous I/O: Powered by FastAPI, aiofiles, and non-blocking streaming handlers.
+
+🛠️ Tech Stack
+Framework: FastAPI
+
+LLM: Google GenAI (gemini-2.5-flash)
+
+Vector Database: ChromaDB
+
+Document Processing: PyPDF, LangChain Text Splitters
+
+Server: Uvicorn
+
+🚀 Quickstart
+Prerequisites
+Python 3.10+ installed
+
+Google Gemini API Key
+
+Installation
+Clone the repository:
+
+Bash
+git clone https://github.com/quzsibidi/FewMates.git
+cd FewMates
+Set up a virtual environment:
+
+Bash
+python -m venv .venv
+Activate on Windows:
+
+PowerShell
+.\.venv\Scripts\Activate.ps1
+Activate on Linux/macOS:
+
+Bash
+source .venv/bin/activate
+Install dependencies:
+
+Bash
 pip install -r requirements.txt
+Configure Environment Variables:
+Create a .env file in the project root directory or export your Gemini API key:
+
+Bash
+export GEMINI_API_KEY="your-gemini-api-key"
+Run the server:
+
+Bash
+python -m uvicorn main:app --reload
+The server will start at [http://127.0.0.1:8000](http://127.0.0.1:8000). Interactive API documentation will be available at [http://127.0.0.1:8000/docs](http://127.0.0.1:8000/docs).
+
+📄 API Endpoints Summary
+Method	Endpoint	Description
+POST	/upload-pdf	Upload and chunk PDF documents into ChromaDB
+POST	/chat/stream	Send prompt with optional RAG flag and receive SSE stream
+📜 License
+Distributed under the MIT License. See LICENSE for more information.
