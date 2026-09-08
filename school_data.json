@@ -1,0 +1,15 @@
+{
+  "school_name": "Experimental High School",
+  "rules": [
+    "Mobile phones are strictly prohibited during class hours.",
+    "Students must maintain silence in the library."
+  ],
+  "schedule": {
+    "Monday": "Mathematics, Physics, Literature",
+    "Tuesday": "Chemistry, Biology, English"
+  },
+  "announcements": [
+    "Science Fair applications are now open.",
+    "AI Club meeting this Friday at 3:30 PM."
+  ]
+}

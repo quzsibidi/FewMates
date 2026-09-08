@@ -1,3 +1,17 @@
+# Environment variables
 .env
-.venv/
+
+# Python & Virtualenv
 __pycache__/
+*.py[cod]
+*$py.class
+.venv/
+venv/
+ENV/
+
+# Streamlit
+.streamlit/
+
+# OS specific
+.DS_Store
+Thumbs.db

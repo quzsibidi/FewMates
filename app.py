@@ -4,66 +4,65 @@ import streamlit as st
 from dotenv import load_dotenv
 import google.generativeai as genai
 
-# Environment Ayarları
+# Load environment variables
 load_dotenv()
 API_KEY = os.getenv("GEMINI_API_KEY")
 
 if not API_KEY:
-    st.error("GEMINI_API_KEY bulunamadı! Lütfen .env dosyasını kontrol edin.")
+    st.error("GEMINI_API_KEY not found! Please check your .env file.")
     st.stop()
 
 genai.configure(api_key=API_KEY)
 
-# Sayfa Yapılandırması
-st.set_page_config(page_title="Deneysel Okul Asistanı", page_icon="🏫", layout="wide")
-st.title("🏫 Deneysel Okul Asistanı")
+# Page Configuration
+st.set_page_config(page_title="Experimental School Assistant", page_icon="🏫", layout="wide")
+st.title("🏫 Experimental School Assistant AI")
 
-# --- SOL PANEL (Ayarlar & Veri Yükleme) ---
+# --- SIDEBAR (Settings & Data Upload) ---
 with st.sidebar:
-    st.header("⚙️ Bot Konfigürasyonu")
+    st.header("⚙️ Bot Configuration")
     
-    # 1. Mod/Kişilik Seçimi (2. Kişi Görevi)
-    st.subheader("1. Bot Kişiliği (Prompt)")
+    # 1. Persona Selection
+    st.subheader("1. Bot Persona (Prompt)")
     try:
         with open("prompts.json", "r", encoding="utf-8") as f:
             prompts = json.load(f)
-        selected_mode = st.selectbox("Bir kişilik seçin:", list(prompts.keys()))
+        selected_mode = st.selectbox("Select a persona:", list(prompts.keys()))
         system_instruction = prompts[selected_mode]
     except Exception:
-        system_instruction = "Sen yardımcı bir okul asistanısın."
-        st.warning("prompts.json bulunamadı, varsayılan mod kullanılıyor.")
+        system_instruction = "You are a helpful school assistant."
+        st.warning("prompts.json not found, using default persona.")
 
-    # 2. Okul Verisi Yükleme (3. Kişi Görevi)
-    st.subheader("2. Okul Veritabanı (JSON)")
-    uploaded_file = st.file_uploader("Okul JSON dosyasını yükleyin", type=["json"])
+    # 2. Custom Data Upload
+    st.subheader("2. School Knowledge Base (JSON)")
+    uploaded_file = st.file_uploader("Upload custom school JSON", type=["json"])
     
     if uploaded_file is not None:
         school_data = json.load(uploaded_file)
-        st.success("Özel Okul Verisi Yüklendi!")
+        st.success("Custom School Data Loaded!")
     else:
-        # Varsayılan Veri
         try:
-            with open("okul_data.json", "r", encoding="utf-8") as f:
+            with open("school_data.json", "r", encoding="utf-8") as f:
                 school_data = json.load(f)
-            st.info("Varsayılan okul_data.json kullanılıyor.")
+            st.info("Using default school_data.json")
         except Exception:
-            school_data = {"bilgi": "Veri yok"}
+            school_data = {"info": "No data available"}
 
-    if st.button("Sohbeti Sıfırla"):
+    if st.button("Reset Chat"):
         st.session_state.messages = []
         st.session_state.chat = None
         st.rerun()
 
-# --- BACKEND MODEL KURULUMU ---
+# --- BACKEND MODEL SETUP ---
 full_instruction = f"""
-Sen deneysel bir Okul Asistanı botusun.
-Aşağıdaki okul verilerini referans alarak soruları yanıtla.
-Bilgilerde olmayan konular için uydurma yapma, 'Bu bilgi okul veritabanında yer almıyor' de.
+You are an experimental School Assistant AI.
+Answer questions based STRICTLY on the following school context.
+If a question cannot be answered using the context, state: 'This information is not available in the school database.'
 
-[YÜKLENEN OKUL VERİTABANI]:
+[SCHOOL KNOWLEDGE BASE]:
 {json.dumps(school_data, ensure_ascii=False, indent=2)}
 
-[KİŞİLİK VE ÜSLUP TALİMATI]:
+[PERSONA & STYLE INSTRUCTIONS]:
 {system_instruction}
 """
 
@@ -77,26 +76,27 @@ if "chat" not in st.session_state or st.session_state.chat is None:
 if "messages" not in st.session_state:
     st.session_state.messages = []
 
-# --- SOHBET EKRANI ---
-# Geçmiş Mesajları Göster
+# --- CHAT INTERFACE ---
 for message in st.session_state.messages:
     with st.chat_message(message["role"]):
         st.markdown(message["content"])
 
-# Kullanıcı Mesaj Girişi
-if user_input := st.chat_input("Okul hakkında bir şey sorun..."):
-    # Kullanıcı Mesajını Ekrana Yaz
+if user_input := st.chat_input("Ask something about the school..."):
     st.session_state.messages.append({"role": "user", "content": user_input})
     with st.chat_message("user"):
         st.markdown(user_input)
 
-    # Bot Yanıtını Üret ve Ekrana Yaz
     with st.chat_message("assistant"):
         try:
-            response = st.session_state.chat.send_message(user_input)
-            bot_reply = response.text
+            response = st.session_state.chat.send_message(user_input, stream=True)
+            
+            def stream_generator():
+                for chunk in response:
+                    yield chunk.text
+            
+            bot_reply = st.write_stream(stream_generator())
         except Exception as e:
-            bot_reply = f"[Hata]: {str(e)}"
+            bot_reply = f"[Error]: {str(e)}"
+            st.markdown(bot_reply)
         
-        st.markdown(bot_reply)
         st.session_state.messages.append({"role": "assistant", "content": bot_reply})
