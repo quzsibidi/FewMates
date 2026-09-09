@@ -1,160 +1,102 @@
 import os
 import json
-import asyncio
-from pathlib import Path
-
+import streamlit as st
 from dotenv import load_dotenv
-from fastapi import FastAPI, UploadFile, File, HTTPException
-from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import StreamingResponse, HTMLResponse
 from openai import OpenAI
-import aiofiles
 
-from schemas import ChatRequest, DocumentUploadResponse
-from prompts import SYSTEM_PROMPT, build_rag_prompt
-from rag_service import process_and_index_pdf, query_rag_context
-
-# ---------------------------------------------------------------------------
-# Environment
-# ---------------------------------------------------------------------------
-load_dotenv(dotenv_path=Path(__file__).resolve().parent / ".env")
-
-API_KEY = os.getenv("OPENAI_API_KEY") or os.getenv("API_KEY")
-BASE_URL = os.getenv("OPENAI_BASE_URL")  # Groq: https://api.groq.com/openai/v1
-MODEL_NAME = os.getenv("MODEL_NAME", "gpt-4o-mini")
+load_dotenv()
+API_KEY = os.getenv("OPENAI_API_KEY")
+BASE_URL = os.getenv("OPENAI_BASE_URL", "https://api.groq.com/openai/v1")
+MODEL_NAME = os.getenv("MODEL_NAME", "openai/gpt-oss-120b")
 
 if not API_KEY:
-    print("\n[HATA] OPENAI_API_KEY yok! .env dosyasına ekle.\n")
-    print("  Groq (ücretsiz): https://console.groq.com/keys")
-    print("  OpenAI: https://platform.openai.com/api-keys\n")
-else:
-    tag = "OpenAI"
-    if BASE_URL and "groq" in BASE_URL:
-        tag = "Groq"
-    elif BASE_URL and "openrouter" in BASE_URL:
-        tag = "OpenRouter"
-    print(f"\n[BİLGİ] {tag} | model={MODEL_NAME} | key={API_KEY[:8]}...\n")
+    st.error("OPENAI_API_KEY not found! Please check your .env file.")
+    st.stop()
 
-client = OpenAI(api_key=API_KEY, base_url=BASE_URL) if API_KEY else None
+client = OpenAI(api_key=API_KEY, base_url=BASE_URL)
 
-# ---------------------------------------------------------------------------
-# App
-# ---------------------------------------------------------------------------
-app = FastAPI(title="FewMates Academic Assistant API")
+st.set_page_config(page_title="Experimental School Assistant", page_icon="🏫", layout="wide")
+st.title("🏫 Experimental School Assistant AI")
 
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=["*"],
-    allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
-)
-
-UPLOAD_DIR = "./uploaded_docs"
-os.makedirs(UPLOAD_DIR, exist_ok=True)
-
-
-@app.get("/", response_class=HTMLResponse)
-async def serve_index():
-    index_path = Path(__file__).resolve().parent / "index.html"
-    if index_path.exists():
-        return index_path.read_text(encoding="utf-8")
-    return "<h1>FewMates API</h1><p>index.html bulunamadı. /docs adresini dene.</p>"
-
-
-# --------------------------------------------------------------------------
-# 1. RAG: DOCUMENT UPLOAD & INDEXING
-# --------------------------------------------------------------------------
-@app.post("/upload-pdf", response_model=DocumentUploadResponse)
-async def upload_pdf(file: UploadFile = File(...)):
-    if not file.filename or not file.filename.lower().endswith(".pdf"):
-        raise HTTPException(status_code=400, detail="Only PDF documents are supported.")
-
-    file_path = os.path.join(UPLOAD_DIR, file.filename)
-
-    async with aiofiles.open(file_path, "wb") as out_file:
-        content = await file.read()
-        await out_file.write(content)
-
+with st.sidebar:
+    st.header("⚙️ Bot Configuration")
+    st.caption("🚀 Powered by Groq API")
+    st.text(f"Model: {MODEL_NAME}")
+    
+    st.subheader("1. Bot Persona (Prompt)")
     try:
-        chunks_count = process_and_index_pdf(file_path, file.filename)
-        return DocumentUploadResponse(
-            filename=file.filename,
-            chunks_indexed=chunks_count,
-            status="Document indexed successfully.",
-        )
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Failed to process PDF: {str(e)}")
+        with open("prompts.json", "r", encoding="utf-8") as f:
+            prompts = json.load(f)
+        selected_mode = st.selectbox("Select a persona:", list(prompts.keys()))
+        system_instruction = prompts[selected_mode]
+    except Exception:
+        system_instruction = "You are a helpful school assistant."
+        st.warning("prompts.json not found, using default persona.")
 
-
-# --------------------------------------------------------------------------
-# 2. SSE: REAL-TIME STREAMING CHAT
-# --------------------------------------------------------------------------
-@app.post("/chat/stream")
-async def chat_stream(request: ChatRequest):
-    if not client:
-        raise HTTPException(status_code=500, detail="OPENAI_API_KEY tanımlı değil.")
-
-    async def event_generator():
+    st.subheader("2. School Knowledge Base (JSON)")
+    uploaded_file = st.file_uploader("Upload custom school JSON", type=["json"])
+    
+    if uploaded_file is not None:
+        school_data = json.load(uploaded_file)
+        st.success("Custom School Data Loaded!")
+    else:
         try:
-            prompt_text = request.message
+            with open("school_data.json", "r", encoding="utf-8") as f:
+                school_data = json.load(f)
+            st.info("Using default school_data.json")
+        except Exception:
+            school_data = {"info": "No data available"}
 
-            if request.use_rag:
-                context = query_rag_context(request.message)
-                prompt_text = build_rag_prompt(request.message, context)
+    if st.button("Reset Chat"):
+        st.session_state.messages = []
+        st.rerun()
+
+system_prompt = f"""
+You are an experimental School Assistant AI.
+Answer questions based STRICTLY on the following school context.
+If a question cannot be answered using the context, state: 'This information is not available in the school database.'
+
+[SCHOOL KNOWLEDGE BASE]:
+{json.dumps(school_data, ensure_ascii=False, indent=2)}
+
+[PERSONA & STYLE INSTRUCTIONS]:
+{system_instruction}
+"""
+
+if "messages" not in st.session_state:
+    st.session_state.messages = []
+
+for message in st.session_state.messages:
+    with st.chat_message(message["role"]):
+        st.markdown(message["content"])
+
+if user_input := st.chat_input("Ask something about the school..."):
+    st.session_state.messages.append({"role": "user", "content": user_input})
+    with st.chat_message("user"):
+        st.markdown(user_input)
+
+    with st.chat_message("assistant"):
+        message_placeholder = st.empty()
+        full_response = ""
+        try:
+            formatted_messages = [{"role": "system", "content": system_prompt}]
+            for msg in st.session_state.messages:
+                formatted_messages.append({"role": msg["role"], "content": msg["content"]})
 
             stream = client.chat.completions.create(
                 model=MODEL_NAME,
-                messages=[
-                    {"role": "system", "content": SYSTEM_PROMPT},
-                    {"role": "user", "content": prompt_text},
-                ],
-                stream=True,
+                messages=formatted_messages,
+                stream=True
             )
-
+            
             for chunk in stream:
-                text = chunk.choices[0].delta.content or ""
-                if text:
-                    data = json.dumps({"text": text}, ensure_ascii=False)
-                    yield f"data: {data}\n\n"
-                    await asyncio.sleep(0.01)
-
-            yield "data: [DONE]\n\n"
-
+                if chunk.choices[0].delta.content:
+                    full_response += chunk.choices[0].delta.content
+                    message_placeholder.markdown(full_response + "▌")
+            
+            message_placeholder.markdown(full_response)
         except Exception as e:
-            error_data = json.dumps({"error": str(e)}, ensure_ascii=False)
-            yield f"data: {error_data}\n\n"
-
-    return StreamingResponse(event_generator(), media_type="text/event-stream")
-
-
-# --------------------------------------------------------------------------
-# 3. Basit JSON chat (frontend /api/chat için)
-# --------------------------------------------------------------------------
-@app.post("/api/chat")
-async def chat_json(request: ChatRequest):
-    if not client:
-        raise HTTPException(status_code=500, detail="OPENAI_API_KEY tanımlı değil.")
-
-    try:
-        prompt_text = request.message
-        if request.use_rag:
-            context = query_rag_context(request.message)
-            prompt_text = build_rag_prompt(request.message, context)
-
-        completion = client.chat.completions.create(
-            model=MODEL_NAME,
-            messages=[
-                {"role": "system", "content": SYSTEM_PROMPT},
-                {"role": "user", "content": prompt_text},
-            ],
-        )
-        answer = completion.choices[0].message.content or ""
-        return {"response": answer}
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
-
-
-if __name__ == "__main__":
-    import uvicorn
-    uvicorn.run("main:app", host="127.0.0.1", port=8000, reload=True)
+            full_response = f"[Error]: {str(e)}"
+            message_placeholder.markdown(full_response)
+        
+        st.session_state.messages.append({"role": "assistant", "content": full_response})
