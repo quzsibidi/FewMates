@@ -2,17 +2,19 @@ import os
 import json
 import streamlit as st
 from dotenv import load_dotenv
-import google.generativeai as genai
+from openai import OpenAI
 
 # Load environment variables
 load_dotenv()
-API_KEY = os.getenv("GEMINI_API_KEY")
+API_KEY = os.getenv("OPENAI_API_KEY")
+BASE_URL = os.getenv("OPENAI_BASE_URL", "https://api.groq.com/openai/v1")
+MODEL_NAME = os.getenv("MODEL_NAME", "llama-3.1-8b-instant")
 
 if not API_KEY:
-    st.error("GEMINI_API_KEY not found! Please check your .env file.")
+    st.error("OPENAI_API_KEY not found! Please check your .env file.")
     st.stop()
 
-genai.configure(api_key=API_KEY)
+client = OpenAI(api_key=API_KEY, base_url=BASE_URL)
 
 # Page Configuration
 st.set_page_config(page_title="Experimental School Assistant", page_icon="🏫", layout="wide")
@@ -50,11 +52,10 @@ with st.sidebar:
 
     if st.button("Reset Chat"):
         st.session_state.messages = []
-        st.session_state.chat = None
         st.rerun()
 
 # --- BACKEND MODEL SETUP ---
-full_instruction = f"""
+system_prompt = f"""
 You are an experimental School Assistant AI.
 Answer questions based STRICTLY on the following school context.
 If a question cannot be answered using the context, state: 'This information is not available in the school database.'
@@ -65,13 +66,6 @@ If a question cannot be answered using the context, state: 'This information is 
 [PERSONA & STYLE INSTRUCTIONS]:
 {system_instruction}
 """
-
-if "chat" not in st.session_state or st.session_state.chat is None:
-    model = genai.GenerativeModel(
-        model_name="gemini-3.6-flash",
-        system_instruction=full_instruction
-    )
-    st.session_state.chat = model.start_chat(history=[])
 
 if "messages" not in st.session_state:
     st.session_state.messages = []
@@ -90,11 +84,19 @@ if user_input := st.chat_input("Ask something about the school..."):
         message_placeholder = st.empty()
         full_response = ""
         try:
-            response = st.session_state.chat.send_message(user_input, stream=True)
+            formatted_messages = [{"role": "system", "content": system_prompt}]
+            for msg in st.session_state.messages:
+                formatted_messages.append({"role": msg["role"], "content": msg["content"]})
+
+            stream = client.chat.completions.create(
+                model=MODEL_NAME,
+                messages=formatted_messages,
+                stream=True
+            )
             
-            for chunk in response:
-                if chunk.text:
-                    full_response += chunk.text
+            for chunk in stream:
+                if chunk.choices[0].delta.content:
+                    full_response += chunk.choices[0].delta.content
                     message_placeholder.markdown(full_response + "▌")
             
             message_placeholder.markdown(full_response)
